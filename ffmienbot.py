@@ -92,20 +92,20 @@ class FfmienBot:
             "• /help — показать данной сообщение"
             "\n• /suggest\_post — предложить пост в КРУГИ НА ФИЗМАТЕ"
             "\n• /suggest\_gossip — предложить пост в [физматовские сплетни](https://t\.me/spletniffmien)"
-            "\n\n||Данный бот является полностью неофициальным и никак"
+            "\n\n||Данный бот является полностью неофициальным и никак "
             "не связан с РУДН и его руководством\."
-            "\nПо всем претензиям, вопросам и предложениям обращайтесь к @sqkrv||",  # todo feedback channel
+            "\nПо всем вопросам и предложениям обращайтесь к @sqkrv||",
             parse_mode=telegram.constants.ParseMode.MARKDOWN_V2
         )
 
     async def suggest_post(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
-            "Отправьте (или перешлите) Ваш пост. Он может быть кругом, фото, видео, текстом.")
+            "Отправьте (или перешлите) Ваш пост. Это может быть \"кружок\", фото, видео или текст.")
         return POST_MESSAGE
 
     async def suggest_gossip(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
-            "Отправьте Ваш материал на сплетню. Он может быть кругом, фото, видео, текстом или аудиосообщением.")
+            "Отправьте Ваш материал на сплетню. Это может быть \"кружок\", фото, видео, текст или аудиосообщение.")
         return GOSSIP_MESSAGE
 
     async def cancel_conversation(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -213,7 +213,7 @@ class FfmienBot:
                 await self.session.rollback()
 
             keyboard = [[InlineKeyboardButton("Удалить нахуй блять", callback_data="delete")]]  # todo deletion of posted message
-            await query.edit_message_text(f"Отправлено!\n{channel_message.link}", reply_markup=None)
+            await query.edit_message_text(f"Пост отправлен в канал\n{channel_message.link}", reply_markup=None)
             await query.answer("Отправлено")
             return
         else:
@@ -267,13 +267,14 @@ class FfmienBot:
 
         if query.data == "approve-suggestion":
             if input_message.channel == ChannelEnum.gossips:
-                return await forward(GOSSIPS_CHANNEL_ID)
+                await forward(GOSSIPS_CHANNEL_ID)
             else:
-                return await forward(CIRCLES_CHANNEL_ID)
+                await forward(CIRCLES_CHANNEL_ID)
+            await query.answer("Пост был успешно отправлен")
         elif query.data == "reject-suggestion":
             await query.message.edit_text(f"Отклонено {callback_by_user}", parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
-            await context.bot.send_message(chat_id=input_message.user_id, text="Отклонено", reply_to_message_id=input_message.message_id)
-            return
+            await context.bot.send_message(chat_id=input_message.user_id, text="Пост был отклонен", reply_to_message_id=input_message.message_id)
+            await query.answer("Уведомление об отклонении было отправлено")
 
     # async def discussion_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     #     logging.debug(update.message)
@@ -281,27 +282,27 @@ class FfmienBot:
     #     if db_message:
     #         await update.message.reply_text("тут инфа об авторе")
 
-    async def forward_video_note(self, context: ContextTypes.DEFAULT_TYPE, author, video_note_message: tgMessage,
-                                 db_user: Optional[User] = None, instant_forward_user: Optional[bool] = None, ):
-        channel_message = await video_note_message.forward(CIRCLES_CHANNEL_ID)
-        admin_chat_message = await video_note_message.forward(ADMIN_CHAT_ID)
-        await admin_chat_message.reply_text(self._author_info(author, db_user, instant_forward_user),
-                                            message_thread_id=ForumThread.POST_SENT, quote=True,
-                                            parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
-
-        # async with AsyncSession(engine) as session:
-        db_message = Message(
-            message_id=channel_message.id,
-            channel_id=channel_message.chat_id,
-            user_id=author.id
-        )
-        self.session.add(db_message)
-        try:
-            await self.session.commit()
-        finally:
-            await self.session.rollback()
-
-        return channel_message
+    # async def forward_video_note(self, context: ContextTypes.DEFAULT_TYPE, author, video_note_message: tgMessage,
+    #                              db_user: Optional[User] = None, instant_forward_user: Optional[bool] = None, ):
+    #     channel_message = await video_note_message.forward(CIRCLES_CHANNEL_ID)
+    #     admin_chat_message = await video_note_message.forward(ADMIN_CHAT_ID)
+    #     await admin_chat_message.reply_text(self._author_info(author, db_user, instant_forward_user),
+    #                                         message_thread_id=ForumThread.POST_SENT, quote=True,
+    #                                         parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
+    #
+    #     # async with AsyncSession(engine) as session:
+    #     db_message = Message(
+    #         message_id=channel_message.id,
+    #         channel_id=channel_message.chat_id,
+    #         user_id=author.id
+    #     )
+    #     self.session.add(db_message)
+    #     try:
+    #         await self.session.commit()
+    #     finally:
+    #         await self.session.rollback()
+    #
+    #     return channel_message
 
     post_filters = filters.VIDEO_NOTE | filters.PHOTO | filters.VIDEO | filters.TEXT
 
