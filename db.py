@@ -3,15 +3,25 @@ from os import getenv
 from typing import List, Optional
 from uuid import uuid4
 from uuid import UUID as pyUUID
+import enum
 from datetime import date, datetime
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import Integer, String, ForeignKey, SmallInteger, CHAR, Uuid, Date, select, BigInteger, func
+from sqlalchemy import ForeignKey, SmallInteger, CHAR, Uuid, Date, select, BigInteger, func, TIMESTAMP, Enum
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column, relationship
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.schema import FetchedValue
 
 SCHEMA = "public"
+
+
+class ChannelEnum(enum.Enum):
+    circles = 'circles'
+    gossips = 'gossips'
+
+    def __str__(self):
+        return self.value
 
 
 class Base(DeclarativeBase):
@@ -33,10 +43,24 @@ class User(Base):
 class Message(Base):
     __tablename__ = "message"
 
-    id: Mapped[pyUUID] = mapped_column(Uuid, primary_key=True, insert_default=uuid4)
+    id: Mapped[pyUUID] = mapped_column(Uuid, primary_key=True, server_default=FetchedValue())
     message_id: Mapped[int] = mapped_column(BigInteger)
     channel_id: Mapped[int] = mapped_column(BigInteger)
     user_id: Mapped[BigInteger] = mapped_column(ForeignKey(f"{SCHEMA}.{User.__tablename__}.id"))
+    timestamp: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=FetchedValue())
+
+    user: Mapped[User] = relationship()
+
+
+class InputMessage(Base):
+    __tablename__ = "input_message"
+
+    message_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[BigInteger] = mapped_column(ForeignKey(f"{SCHEMA}.{User.__tablename__}.id"))
+    timestamp: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=FetchedValue())
+    suggestion_message_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    reply_message_id: Mapped[int] = mapped_column(BigInteger)
+    channel: Mapped[ChannelEnum] = mapped_column(Enum(ChannelEnum, name="channel"))
 
     user: Mapped[User] = relationship()
 
