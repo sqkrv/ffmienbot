@@ -87,7 +87,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "• /help — показать данной сообщение"
         "\n• /suggest_post — предложить пост в КРУГИ НА ФИЗМАТЕ"
-        "\n• /suggest_gossip — предложить пост в [физматовские сплетни](https://t.me/spletniffmien)"
+        "\n• /suggest_gossip — предложить пост в [физматовские сплетни](https://t\.me/spletniffmien)"
         "\n\n||Данный бот является полностью неофициальным и никак"
         "не связан с РУДН и его руководством."
         "\nПо всем претензиям, вопросам и предложениям обращайтесь к @sqkrv||",  # todo feedback channel
