@@ -206,6 +206,8 @@ async def handle_suggestion_callback(update: Update, context: ContextTypes.DEFAU
 
     input_message: InputMessage = await session.scalar(select(InputMessage).filter_by(suggestion_message_id=message.id))
 
+    callback_by_user = f"by {callback_user.mention_markdown_v2()}"
+
     async def forward(chat_id: int | str):
         chat_id = int(chat_id)
         if input_message.channel == ChannelEnum.circles:
@@ -217,7 +219,7 @@ async def handle_suggestion_callback(update: Update, context: ContextTypes.DEFAU
             Message(message_id=channel_message.message_id, channel_id=chat_id, user_id=input_message.user_id))
         # await session.commit()
         post_link = f"[Ссылка на пост](" + (channel_message.link if isinstance(channel_message, telegram.Message) else f"https://t.me/c/{str(chat_id)[4:]}/{channel_message.message_id}") + ')'
-        await query.message.edit_text(f"Одобрено {callback_user.mention_markdown_v2()}\n{post_link}",
+        await query.message.edit_text(f"Одобрено {callback_by_user}\n{post_link}",
                                       parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
         await context.bot.send_message(
             chat_id=input_message.user_id,
@@ -237,7 +239,7 @@ async def handle_suggestion_callback(update: Update, context: ContextTypes.DEFAU
         else:
             return await forward(CIRCLES_CHANNEL_ID)
     elif query.data == "reject-suggestion":
-        await query.message.edit_text("Отклонено")
+        await query.message.edit_text(f"Отклонено {callback_by_user}")
         await context.bot.send_message(chat_id=input_message.user_id, text="Отклонено", reply_to_message_id=input_message.message_id)
         return
 
