@@ -5,11 +5,10 @@ from typing import Optional
 import telegram
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import async_sessionmaker
-from telegram import Message as tgMessage
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler, MessageHandler, \
-    ConversationHandler
+from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler, MessageHandler, ConversationHandler
 from telegram.ext import filters
+from telegram.helpers import escape_markdown
 
 from db import User, Message, InputMessage, engine
 from db import enum, ChannelEnum
@@ -58,13 +57,13 @@ class FfmienBot:
                f"\nМоментальная отправка: {('Да' if db_user.instant_forward else 'Нет') if db_user else ('Да' if instant_forward_user else 'Нет')}"
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text(
-            "Приветствую в боте ФФМиЕН\!"
+        await update.message.reply_text(escape_markdown(
+            "Приветствую в боте ФФМиЕН!"
             "\n\nНа данный момент данный бот предназначен для предложения "
-            "постов в сеть телеграм\-каналов физмата\. Вы можете предложить пост "
+            "постов в сеть телеграм-каналов физмата. Вы можете предложить пост "
             "в круги физмата, а можете предложить сплетни в "
-            "[физматовские сплетни](https://t\.me/spletniffmien) 😉\."
-            "\n\nДля помощи наберите /help\.",
+            "[физматовские сплетни](https://t.me/spletniffmien) 😉."
+            "\n\nДля помощи наберите /help.", version=2),
             parse_mode=telegram.constants.ParseMode.MARKDOWN_V2
         )
 
@@ -88,13 +87,13 @@ class FfmienBot:
             await self.session.rollback()
 
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text(
+        await update.message.reply_text(escape_markdown(
             "• /help — показать данной сообщение"
             "\n• /suggest\_post — предложить пост в КРУГИ НА ФИЗМАТЕ"
             "\n• /suggest\_gossip — предложить пост в [физматовские сплетни](https://t\.me/spletniffmien)"
             "\n\n||Данный бот является полностью неофициальным и никак "
             "не связан с РУДН и его руководством\."
-            "\nПо всем вопросам и предложениям обращайтесь к @sqkrv||",
+            "\nПо всем вопросам и предложениям обращайтесь к @sqkrv||", version=2),
             parse_mode=telegram.constants.ParseMode.MARKDOWN_V2
         )
 
