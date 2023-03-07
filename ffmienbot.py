@@ -58,7 +58,10 @@ def author_info(author: telegram.User, db_user: Optional[User] = None, instant_f
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Приветствую в боте ФФМиЕН!"
-        "\n\nДанный бот предназначен пока что только для кругов а вообще нет, не только"
+        "\n\nНа данный момент данный бот предназначен для предложения "
+        "постов в сеть телеграм-каналов физмата. Вы можете предложить пост "
+        "в круги физмата, а можете предложить сплетни в "
+        "[физматовские сплетни](https://t.me/spletniffmien) 😉."
         "\n\nДля помощи наберите /help."
     )
 
@@ -82,26 +85,27 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "• /help — показать данной сообщение"
-        "\n• /asd \<запрос\> — "
+        "\n• /suggest_post — предложить пост в КРУГИ НА ФИЗМАТЕ"
+        "\n• /suggest_gossip — предложить пост в [физматовские сплетни](https://t.me/spletniffmien)"
         "\n\n||Данный бот является полностью неофициальным и никак"
-        "не связан с РУДН."
-        "\nПо всем претензиям, вопросам и предложениям обращайтесь ||",  # todo feedback channel
+        "не связан с РУДН и его руководством."
+        "\nПо всем претензиям, вопросам и предложениям обращайтесь к @sqkrv||",  # todo feedback channel
         parse_mode=telegram.constants.ParseMode.MARKDOWN_V2
     )
 
 
 async def suggest_post(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("валяй пост в круги")
+    await update.message.reply_text("Отправьте (или перешлите) Ваш пост. Он может быть кругом, фото, видео, текстом.")
     return POST_MESSAGE
 
 
 async def suggest_gossip(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("валяй сплетню")
+    await update.message.reply_text("Отправьте Ваш материал на сплетню. Он может быть кругом, фото, видео, текстом или аудиосообщением.")
     return GOSSIP_MESSAGE
 
 
 async def cancel_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("отменил")
+    await update.message.reply_text("Отменил процедуру")
     return ConversationHandler.END
 
 
