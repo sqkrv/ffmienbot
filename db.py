@@ -1,4 +1,3 @@
-from os import getenv
 import enum
 from datetime import datetime
 from os import getenv
