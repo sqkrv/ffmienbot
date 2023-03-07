@@ -1,20 +1,23 @@
-import asyncio
 import os
 from os import getenv
 from typing import Optional
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram import Message as tgMessage
-from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler, MessageHandler, ConversationHandler
+from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler, MessageHandler, \
+    ConversationHandler
 from telegram.ext import filters
 import telegram
 import logging
 from db import enum, ChannelEnum
 
-from db import User, Message, InputMessage, engine, select, func, async_sessionmaker
+from db import User, Message, InputMessage, engine
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -111,8 +114,10 @@ async def dont_suggest_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 
 async def gossip_dmed(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton("✅ Отправить", callback_data=f"suggestion-send-{ChannelEnum.gossips}"), InlineKeyboardButton("❌ Отменить", callback_data=f"dont-suggest")]]
-    await update.message.reply_text("Отправить на рассмотрение?", quote=True, reply_markup=InlineKeyboardMarkup(keyboard))
+    keyboard = [[InlineKeyboardButton("✅ Отправить", callback_data=f"suggestion-send-{ChannelEnum.gossips}"),
+                 InlineKeyboardButton("❌ Отменить", callback_data=f"dont-suggest")]]
+    await update.message.reply_text("Отправить на рассмотрение?", quote=True,
+                                    reply_markup=InlineKeyboardMarkup(keyboard))
 
     return ConversationHandler.END
 
@@ -130,8 +135,10 @@ async def circles_post_dmed(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # await update.message.reply_text(f"Отправлено! {channel_message.link}", quote=True, reply_markup=InlineKeyboardMarkup(keyboard))
         # return
     else:
-        keyboard = [[InlineKeyboardButton("✅ Отправить", callback_data=f"suggestion-send-{ChannelEnum.circles}"), InlineKeyboardButton("❌ Отменить", callback_data=f"dont-suggest")]]
-        await update.message.reply_text("Отправить на рассмотрение?", quote=True, reply_markup=InlineKeyboardMarkup(keyboard))
+        keyboard = [[InlineKeyboardButton("✅ Отправить", callback_data=f"suggestion-send-{ChannelEnum.circles}"),
+                     InlineKeyboardButton("❌ Отменить", callback_data=f"dont-suggest")]]
+        await update.message.reply_text("Отправить на рассмотрение?", quote=True,
+                                        reply_markup=InlineKeyboardMarkup(keyboard))
 
     return ConversationHandler.END
 
@@ -151,7 +158,8 @@ async def suggest_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.answer("Данное сообщение уже было предложено")
             return
 
-        keyboard = [[InlineKeyboardButton("✅ Одобрить", callback_data="approve-suggestion"), InlineKeyboardButton("❌ Отказать", callback_data="reject-suggestion")]]
+        keyboard = [[InlineKeyboardButton("✅ Одобрить", callback_data="approve-suggestion"),
+                     InlineKeyboardButton("❌ Отказать", callback_data="reject-suggestion")]]
         message_in_suggestions = await message.forward(
             ADMIN_CHAT_ID,
             message_thread_id=ForumThread.GOSSIP_SUGGESTIONS if message_type == ChannelEnum.gossips else ForumThread.POST_SUGGESTIONS
@@ -211,14 +219,18 @@ async def handle_suggestion_callback(update: Update, context: ContextTypes.DEFAU
     async def forward(chat_id: int | str):
         chat_id = int(chat_id)
         if input_message.channel == ChannelEnum.circles:
-            channel_message: telegram.Message = await context.bot.forward_message(chat_id=chat_id, from_chat_id=ADMIN_CHAT_ID,
-                                                                message_id=input_message.suggestion_message_id)
+            channel_message: telegram.Message = await context.bot.forward_message(chat_id=chat_id,
+                                                                                  from_chat_id=ADMIN_CHAT_ID,
+                                                                                  message_id=input_message.suggestion_message_id)
         else:
-            channel_message: telegram.MessageId = await context.bot.copy_message(chat_id=chat_id, from_chat_id=ADMIN_CHAT_ID, message_id=input_message.suggestion_message_id)
+            channel_message: telegram.MessageId = await context.bot.copy_message(chat_id=chat_id,
+                                                                                 from_chat_id=ADMIN_CHAT_ID,
+                                                                                 message_id=input_message.suggestion_message_id)
         session.add(
             Message(message_id=channel_message.message_id, channel_id=chat_id, user_id=input_message.user_id))
         # await session.commit()
-        post_link = f"[Ссылка на пост](" + (channel_message.link if isinstance(channel_message, telegram.Message) else f"https://t.me/c/{str(chat_id)[4:]}/{channel_message.message_id}") + ')'
+        post_link = f"[Ссылка на пост](" + (channel_message.link if isinstance(channel_message,
+                                                                               telegram.Message) else f"https://t.me/c/{str(chat_id)[4:]}/{channel_message.message_id}") + ')'
         await query.message.edit_text(f"Одобрено {callback_by_user}\n{post_link}",
                                       parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
         await context.bot.send_message(
@@ -240,7 +252,8 @@ async def handle_suggestion_callback(update: Update, context: ContextTypes.DEFAU
             return await forward(CIRCLES_CHANNEL_ID)
     elif query.data == "reject-suggestion":
         await query.message.edit_text(f"Отклонено {callback_by_user}")
-        await context.bot.send_message(chat_id=input_message.user_id, text="Отклонено", reply_to_message_id=input_message.message_id)
+        await context.bot.send_message(chat_id=input_message.user_id, text="Отклонено",
+                                       reply_to_message_id=input_message.message_id)
         return
 
 
@@ -251,10 +264,13 @@ async def handle_suggestion_callback(update: Update, context: ContextTypes.DEFAU
 #         await update.message.reply_text("тут инфа об авторе")
 
 
-async def forward_video_note(context: ContextTypes.DEFAULT_TYPE, author, video_note_message: tgMessage, db_user: Optional[User] = None, instant_forward_user: Optional[bool] = None, ):
+async def forward_video_note(context: ContextTypes.DEFAULT_TYPE, author, video_note_message: tgMessage,
+                             db_user: Optional[User] = None, instant_forward_user: Optional[bool] = None, ):
     channel_message = await video_note_message.forward(CIRCLES_CHANNEL_ID)
     admin_chat_message = await video_note_message.forward(ADMIN_CHAT_ID)
-    await admin_chat_message.reply_text(author_info(author, db_user, instant_forward_user), message_thread_id=ForumThread.POST_SENT, quote=True, parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
+    await admin_chat_message.reply_text(author_info(author, db_user, instant_forward_user),
+                                        message_thread_id=ForumThread.POST_SENT, quote=True,
+                                        parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
     # async for message in await context.bot.get_chat(channel_message.chat.linked_chat_id)
     # async for message in (await context.bot.get_chat(DISCUSSION_CHAT_ID)):  # todo how to send comments
 
@@ -285,7 +301,8 @@ def main():
     application.add_handler(CommandHandler('help', help_command))
     # application.add_handler(MessageHandler(filters.VIDEO_NOTE & filters.ChatType.PRIVATE, video_note_dmed))
     application.add_handler(CallbackQueryHandler(instant_post_callback, pattern="instant-send"))
-    application.add_handler(CallbackQueryHandler(suggest_callback, pattern=rf"suggestion-send-({ChannelEnum.circles}|{ChannelEnum.gossips})"))
+    application.add_handler(CallbackQueryHandler(suggest_callback,
+                                                 pattern=rf"suggestion-send-({ChannelEnum.circles}|{ChannelEnum.gossips})"))
     application.add_handler(CallbackQueryHandler(dont_suggest_callback, pattern="dont-suggest"))
     # application.add_handler(CallbackQueryHandler(suggestion_cancel_callback, pattern="suggestion-cancel"))
     application.add_handler(CallbackQueryHandler(handle_suggestion_callback, pattern="approve-suggestion"))
@@ -295,7 +312,8 @@ def main():
     post_suggestion_handler = ConversationHandler(
         entry_points=[CommandHandler("suggest_post", suggest_post)],
         states={
-            POST_MESSAGE: [MessageHandler(post_filters & filters.ChatType.PRIVATE & ~filters.COMMAND, circles_post_dmed)]
+            POST_MESSAGE: [
+                MessageHandler(post_filters & filters.ChatType.PRIVATE & ~filters.COMMAND, circles_post_dmed)]
         },
         fallbacks=[CommandHandler("cancel", cancel_conversation)],
     )
@@ -304,7 +322,9 @@ def main():
     gossip_suggestion_handler = ConversationHandler(
         entry_points=[CommandHandler("suggest_gossip", suggest_gossip)],
         states={
-            GOSSIP_MESSAGE: [MessageHandler((post_filters | filters.VOICE) & filters.ChatType.PRIVATE & ~filters.COMMAND, gossip_dmed)]
+            GOSSIP_MESSAGE: [
+                MessageHandler((post_filters | filters.VOICE) & filters.ChatType.PRIVATE & ~filters.COMMAND,
+                               gossip_dmed)]
         },
         fallbacks=[CommandHandler("cancel", cancel_conversation)],
     )

@@ -1,16 +1,14 @@
-import asyncio
 from os import getenv
-from typing import List, Optional
-from uuid import uuid4
-from uuid import UUID as pyUUID
 import enum
-from datetime import date, datetime
+from datetime import datetime
+from os import getenv
+from uuid import UUID as pyUUID
+
+from sqlalchemy import ForeignKey, Uuid, BigInteger, TIMESTAMP, Enum
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import ForeignKey, SmallInteger, CHAR, Uuid, Date, select, BigInteger, func, TIMESTAMP, Enum
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column, relationship
-from sqlalchemy.ext.asyncio import async_sessionmaker
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.schema import FetchedValue
 
 SCHEMA = "public"
@@ -66,6 +64,6 @@ class InputMessage(Base):
 
 
 engine = create_async_engine(
-        getenv("DATABASE_URL"),
-        echo=True,
-    )
+    getenv("DATABASE_URL"),
+    echo=False
+)
