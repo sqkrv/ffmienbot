@@ -80,7 +80,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         bot=user.is_bot
     )
     session.add(db_user)
-    await session.commit()
+    try:
+        await session.commit()
+    finally:
+        await session.rollback()
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -185,7 +188,10 @@ async def suggest_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_message_id=query.message.id,
             channel=message_type
         ))
-        await session.commit()
+        try:
+            await session.commit()
+        finally:
+            await session.rollback()
     finally:
         context.user_data[DataConsts.SUGGESTION_IN_WORK] = False
 
@@ -203,7 +209,7 @@ async def instant_post_callback(update: Update, context: ContextTypes.DEFAULT_TY
     if db_user.instant_forward:
         channel_message = await forward_video_note(context, author, video_note, instant_forward_user=False)
 
-        keyboard = [[InlineKeyboardButton("Удалить нахуй блять", callback_data="delete")]]  # todo
+        keyboard = [[InlineKeyboardButton("Удалить нахуй блять", callback_data="delete")]]  # todo deletion of posted message
         await query.edit_message_text(f"Отправлено!\n{channel_message.link}", reply_markup=None)
         await query.answer("Отправлено")
         return
@@ -244,10 +250,10 @@ async def handle_suggestion_callback(update: Update, context: ContextTypes.DEFAU
             reply_to_message_id=input_message.message_id,
             parse_mode=telegram.constants.ParseMode.MARKDOWN_V2
         )
-        await session.commit()
-        # for msg in discussion_messages:
-        #     if msg
-        # await context.bot.edit_message_text(text="", chat_id=input_message.user_id, message_id=input_message.reply_message_id)
+        try:
+            await session.commit()
+        finally:
+            await session.rollback()
         return
 
     if query.data == "approve-suggestion":
@@ -256,7 +262,7 @@ async def handle_suggestion_callback(update: Update, context: ContextTypes.DEFAU
         else:
             return await forward(CIRCLES_CHANNEL_ID)
     elif query.data == "reject-suggestion":
-        await query.message.edit_text(f"Отклонено {callback_by_user}")
+        await query.message.edit_text(f"Отклонено {callback_by_user}", parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
         await context.bot.send_message(chat_id=input_message.user_id, text="Отклонено",
                                        reply_to_message_id=input_message.message_id)
         return
@@ -291,7 +297,10 @@ async def forward_video_note(context: ContextTypes.DEFAULT_TYPE, author, video_n
         user_id=author.id
     )
     session.add(db_message)
-    await session.commit()
+    try:
+        await session.commit()
+    finally:
+        await session.rollback()
 
     return channel_message
 
