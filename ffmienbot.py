@@ -40,6 +40,8 @@ logging.basicConfig(
 
 logging.debug(' '.join([ADMIN_CHAT_ID, CIRCLES_CHANNEL_ID, CIRCLES_DISCUSSION_CHAT_ID, GOSSIPS_CHANNEL_ID]))
 
+Session = async_sessionmaker(bind=engine, expire_on_commit=False)
+
 
 class FfmienBot:
     def __init__(
@@ -47,8 +49,7 @@ class FfmienBot:
             bot_token: str,
     ):
         self._bot_token: str = bot_token
-        Session = async_sessionmaker(bind=engine)
-        self.session = Session()
+        # self.session = Session()
 
     def _author_info(self, author: telegram.User, db_user: Optional[User] = None,
                      instant_forward_user: Optional[bool] = None):
@@ -68,22 +69,19 @@ class FfmienBot:
 
         user = update.effective_user
 
-        # async with AsyncSession(engine) as session:
-        if await self.session.scalar(select(func.count()).select_from(User).filter_by(id=user.id)):
-            return
+        async with Session() as session, session.begin():
+            if await session.scalar(select(func.count()).select_from(User).filter_by(id=user.id)):
+                return
 
-        db_user = User(
-            id=user.id,
-            username=user.username,
-            first_name=user.first_name,
-            last_name=user.last_name,
-            bot=user.is_bot
-        )
-        self.session.add(db_user)
-        try:
-            await self.session.commit()
-        finally:
-            await self.session.rollback()
+            db_user = User(
+                id=user.id,
+                username=user.username,
+                first_name=user.first_name,
+                last_name=user.last_name,
+                bot=user.is_bot
+            )
+            session.add(db_user)
+            await session.commit()
 
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
@@ -126,8 +124,8 @@ class FfmienBot:
         return ConversationHandler.END
 
     async def circles_post_dmed(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        # async with AsyncSession(engine) as session:
-        db_user: User = await self.session.scalar(select(User).filter_by(id=update.effective_user.id))
+        async with Session() as session:
+            db_user: User = await session.scalar(select(User).filter_by(id=update.effective_user.id))
 
         if db_user.instant_forward:
             keyboard = [[InlineKeyboardButton("✅ Отправить", callback_data="instant-send-post")]]
@@ -150,38 +148,36 @@ class FfmienBot:
             message = query.message.reply_to_message
             author = message.from_user
 
-            db_input_message: InputMessage = await self.session.scalar(
-                select(InputMessage).filter_by(message_id=message.id))
-            if db_input_message:
-                await query.answer("Данное сообщение уже было предложено")
-                return
+            async with Session() as session, session.begin():
+                db_input_message: InputMessage = await session.scalar(
+                    select(InputMessage).filter_by(message_id=message.id))
+                if db_input_message:
+                    await query.answer("Данное сообщение уже было предложено")
+                    return
 
-            keyboard = [[InlineKeyboardButton("✅ Одобрить", callback_data="approve-suggestion"),
-                         InlineKeyboardButton("❌ Отказать", callback_data="reject-suggestion")]]
-            message_in_suggestions = await message.forward(
-                ADMIN_CHAT_ID,
-                message_thread_id=ForumThread.GOSSIP_SUGGESTIONS if message_type == ChannelEnum.gossips else ForumThread.POST_SUGGESTIONS
-            )
-            await message_in_suggestions.reply_text(
-                self._author_info(author, instant_forward_user=False),
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                message_thread_id=ForumThread.GOSSIP_SUGGESTIONS if message_type == ChannelEnum.gossips else ForumThread.POST_SUGGESTIONS,
-                parse_mode=telegram.constants.ParseMode.MARKDOWN_V2
-            )
-            await query.edit_message_text("Отправлено в предложку", reply_markup=None)
-            await query.answer("Отправлено в предложку")
+                keyboard = [[InlineKeyboardButton("✅ Одобрить", callback_data="approve-suggestion"),
+                             InlineKeyboardButton("❌ Отказать", callback_data="reject-suggestion")]]
+                message_in_suggestions = await message.forward(
+                    ADMIN_CHAT_ID,
+                    message_thread_id=ForumThread.GOSSIP_SUGGESTIONS if message_type == ChannelEnum.gossips else ForumThread.POST_SUGGESTIONS
+                )
+                await message_in_suggestions.reply_text(
+                    self._author_info(author, instant_forward_user=False),
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    message_thread_id=ForumThread.GOSSIP_SUGGESTIONS if message_type == ChannelEnum.gossips else ForumThread.POST_SUGGESTIONS,
+                    parse_mode=telegram.constants.ParseMode.MARKDOWN_V2
+                )
+                await query.edit_message_text("Отправлено в предложку", reply_markup=None)
+                await query.answer("Отправлено в предложку")
 
-            self.session.add(InputMessage(
-                message_id=message.id,
-                user_id=author.id,
-                suggestion_message_id=message_in_suggestions.id,
-                reply_message_id=query.message.id,
-                channel=message_type
-            ))
-            try:
-                await self.session.commit()
-            finally:
-                await self.session.rollback()
+                session.add(InputMessage(
+                    message_id=message.id,
+                    user_id=author.id,
+                    suggestion_message_id=message_in_suggestions.id,
+                    reply_message_id=query.message.id,
+                    channel=message_type
+                ))
+                await session.commit()
         finally:
             context.user_data[DataConsts.SUGGESTION_IN_WORK] = False
 
@@ -192,31 +188,30 @@ class FfmienBot:
         query = update.callback_query
         message = query.message.reply_to_message
         author = message.from_user
-        db_user: User = await self.session.scalar(select(User).filter_by(id=update.effective_user.id))
 
-        if db_user.instant_forward:
-            channel_message = await message.forward(CIRCLES_CHANNEL_ID)
-            await self._duplicate_post_to_topic(message, author, db_user)
+        async with Session() as session, session.begin():
+            db_user: User = await session.scalar(select(User).filter_by(id=update.effective_user.id))
 
-            # async with AsyncSession(engine) as session:
-            db_message = Message(
-                message_id=channel_message.id,
-                channel_id=channel_message.chat_id,
-                user_id=author.id
-            )
-            self.session.add(db_message)
-            try:
-                await self.session.commit()
-            finally:
-                await self.session.rollback()
+            if db_user.instant_forward:
+                channel_message = await message.forward(CIRCLES_CHANNEL_ID)
+                await self._duplicate_post_to_topic(message, author, db_user)
 
-            keyboard = [[InlineKeyboardButton("Удалить нахуй блять", callback_data="delete")]]  # todo deletion of posted message
-            await query.edit_message_text(f"Пост отправлен в канал\n{channel_message.link}", reply_markup=None)
-            await query.answer("Отправлено")
-            return
-        else:
-            await query.answer("Вам недоступен данный функционал")
-            pass
+                # async with AsyncSession(engine) as session:
+                db_message = Message(
+                    message_id=channel_message.id,
+                    channel_id=channel_message.chat_id,
+                    user_id=author.id
+                )
+                session.add(db_message)
+                await session.commit()
+
+                keyboard = [[InlineKeyboardButton("Удалить нахуй блять", callback_data="delete")]]  # todo deletion of posted message
+                await query.edit_message_text(f"Пост отправлен в канал\n{channel_message.link}", reply_markup=None)
+                await query.answer("Отправлено")
+                return
+            else:
+                await query.answer("Вам недоступен данный функционал")
+                pass
 
     async def _duplicate_post_to_topic(self, message: telegram.Message, author: telegram.User, db_user: User):
         admin_chat_message = await message.forward(ADMIN_CHAT_ID, message_thread_id=ForumThread.POST_SENT)
@@ -229,11 +224,12 @@ class FfmienBot:
         message_in_chat = query.message.reply_to_message
         og_message_author = message_in_chat.forward_from
 
-        input_message: InputMessage = await self.session.scalar(
-            select(InputMessage).filter_by(suggestion_message_id=message_in_chat.id))
-        db_user: User = await self.session.scalar(select(User).filter_by(id=update.effective_user.id))
+        async with Session() as session, session.begin():
+            input_message: InputMessage = await session.scalar(
+                select(InputMessage).filter_by(suggestion_message_id=message_in_chat.id))
+            db_user: User = await session.scalar(select(User).filter_by(id=update.effective_user.id))
 
-        callback_by_user = f"by {query.from_user.mention_markdown_v2()}"
+            callback_by_user = f"by {query.from_user.mention_markdown_v2()}"
 
         async def forward(chat_id: int | str):
             chat_id = int(chat_id)
@@ -246,22 +242,18 @@ class FfmienBot:
                 channel_message: telegram.MessageId = await context.bot.copy_message(chat_id=chat_id,
                                                                                      from_chat_id=ADMIN_CHAT_ID,
                                                                                      message_id=input_message.suggestion_message_id)
-            self.session.add(Message(message_id=channel_message.message_id, channel_id=chat_id, user_id=input_message.user_id))
-            # await self.session.commit()
-            post_link = f"[Ссылка на пост](" + (channel_message.link if isinstance(channel_message,
-                                                                                   telegram.Message) else f"https://t.me/c/{str(chat_id)[4:]}/{channel_message.message_id}") + ')'
-            await query.message.edit_text(f"Одобрено {callback_by_user}\n{post_link}", parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
-            await context.bot.send_message(
-                chat_id=input_message.user_id,
-                text=f"Ваш пост был одобрен\n{post_link}",
-                reply_to_message_id=input_message.message_id,
-                parse_mode=telegram.constants.ParseMode.MARKDOWN_V2
-            )
-            try:
-                await self.session.commit()
-            finally:
-                await self.session.rollback()
-            return
+            async with Session() as session, session.begin():
+                session.add(Message(message_id=channel_message.message_id, channel_id=chat_id, user_id=input_message.user_id))
+                post_link = f"[Ссылка на пост](" + (channel_message.link if isinstance(channel_message,
+                                                                                       telegram.Message) else f"https://t.me/c/{str(chat_id)[4:]}/{channel_message.message_id}") + ')'
+                await query.message.edit_text(f"Одобрено {callback_by_user}\n{post_link}", parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
+                await context.bot.send_message(
+                    chat_id=input_message.user_id,
+                    text=f"Ваш пост был одобрен\n{post_link}",
+                    reply_to_message_id=input_message.message_id,
+                    parse_mode=telegram.constants.ParseMode.MARKDOWN_V2
+                )
+                await session.commit()
 
         if query.data == "approve-suggestion":
             if input_message.channel == ChannelEnum.gossips:
