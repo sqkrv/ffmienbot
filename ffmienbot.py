@@ -69,7 +69,7 @@ class FfmienBot:
 
         user = update.effective_user
 
-        async with Session() as session, session.begin():
+        async with Session() as session:
             if await session.scalar(select(func.count()).select_from(User).filter_by(id=user.id)):
                 return
 
@@ -126,6 +126,7 @@ class FfmienBot:
     async def circles_post_dmed(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         async with Session() as session:
             db_user: User = await session.scalar(select(User).filter_by(id=update.effective_user.id))
+            session.close()
 
         if db_user.instant_forward:
             keyboard = [[InlineKeyboardButton("✅ Отправить", callback_data="instant-send-post")]]
@@ -294,6 +295,11 @@ class FfmienBot:
     #
     #     return channel_message
 
+    async def sqtest_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if update.effective_user.username != 'sqkrv':
+            return
+        print(Session)
+
     post_filters = filters.VIDEO_NOTE | filters.PHOTO | filters.VIDEO | filters.TEXT
 
     def run(self):
@@ -301,6 +307,7 @@ class FfmienBot:
 
         application.add_handler(CommandHandler('start', self.start))
         application.add_handler(CommandHandler('help', self.help_command))
+        application.add_handler(CommandHandler('sqtest', self.sqtest_command))  # todo debug
         # application.add_handler(MessageHandler(filters.VIDEO_NOTE & filters.ChatType.PRIVATE, video_note_dmed))
         application.add_handler(CallbackQueryHandler(self.instant_post_callback, pattern="instant-send-post"))
         application.add_handler(CallbackQueryHandler(self.suggest_callback,
