@@ -126,7 +126,7 @@ class FfmienBot:
     async def circles_post_dmed(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         async with Session() as session:
             db_user: User = await session.scalar(select(User).filter_by(id=update.effective_user.id))
-            session.close()
+            await session.close()
 
         if db_user.instant_forward:
             keyboard = [[InlineKeyboardButton("✅ Отправить", callback_data="instant-send-post")]]
