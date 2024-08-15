@@ -238,7 +238,7 @@ class FfmienBot:
                 channel_message: telegram.Message = await context.bot.forward_message(chat_id=chat_id,
                                                                                       from_chat_id=ADMIN_CHAT_ID,
                                                                                       message_id=input_message.suggestion_message_id)
-                await self._duplicate_post_to_topic(message_in_chat, og_message_author, db_user)
+                await self._duplicate_post_to_topic(message_in_chat, og_message_author or query.from_user, db_user)
             else:
                 channel_message: telegram.MessageId = await context.bot.copy_message(chat_id=chat_id,
                                                                                      from_chat_id=ADMIN_CHAT_ID,
