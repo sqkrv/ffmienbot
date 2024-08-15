@@ -34,11 +34,12 @@ GOSSIPS_CHANNEL_ID = getenv("GOSSIPS_CHANNEL_ID")
 ENV = getenv("ENV")
 
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.DEBUG if ENV == 'dev' else logging.INFO
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG if ENV == 'dev' else logging.INFO)
 
-logging.debug(' '.join([ADMIN_CHAT_ID, CIRCLES_CHANNEL_ID, CIRCLES_DISCUSSION_CHAT_ID, GOSSIPS_CHANNEL_ID]))
+logger.debug(' '.join([ADMIN_CHAT_ID, CIRCLES_CHANNEL_ID, CIRCLES_DISCUSSION_CHAT_ID, GOSSIPS_CHANNEL_ID]))
 
 Session = async_sessionmaker(bind=engine, expire_on_commit=False)
 
@@ -268,7 +269,7 @@ class FfmienBot:
             await query.answer("Уведомление об отклонении было отправлено")
 
     # async def discussion_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    #     logging.debug(update.message)
+    #     logger.debug(update.message)
     #     db_message: Message = await self.session.scalar(select(Message).filter_by(message_id=update.message.id, channel_id=update.message.sender_chat.id))
     #     if db_message:
     #         await update.message.reply_text("тут инфа об авторе")
@@ -340,5 +341,5 @@ class FfmienBot:
         )
         application.add_handler(gossip_suggestion_handler)
 
-        logging.info("Starting the bot")
+        logger.info("Starting the bot")
         application.run_polling()
