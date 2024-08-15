@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "ffmienbot"
+version = "0.1.0"
+description = ""
+authors = ["sqkrv"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+python-telegram-bot = "^21.4"
+SQLAlchemy = "^2.0.32"
+psycopg2 = "^2.9.9"
+asyncpg = "^0.29.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
