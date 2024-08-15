@@ -35,7 +35,7 @@ ENV = getenv("ENV")
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO if ENV == 'dev' else logging.WARNING
+    level=logging.DEBUG if ENV == 'dev' else logging.INFO
 )
 
 logging.debug(' '.join([ADMIN_CHAT_ID, CIRCLES_CHANNEL_ID, CIRCLES_DISCUSSION_CHAT_ID, GOSSIPS_CHANNEL_ID]))
